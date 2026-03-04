@@ -553,6 +553,12 @@ class Mfem(Package, CudaPackage, ROCmPackage):
     patch("mfem-4.7.patch", when="@4.7.0")
     patch("mfem-4.7-sundials-7.patch", when="@4.7.0+sundials ^sundials@7:")
     patch("mfem-4.8-nvcc-c++17.patch", when="@4.8.0+cuda")
+
+    # Backport fix for potential leak (redundant allocation) in
+    # FiniteElement::GetDofToQuad. PR: https://github.com/mfem/mfem/pull/5155
+    # The PR introduces compilation errors for GCC with OpenMP, so a second
+    # patch is applied on top of it to fix that.
+    # PR: https://github.com/mfem/mfem/pull/5224
     patch("mfem-4.9.patch", when="@4.9.0")
 
     phases = ["configure", "build", "install"]
@@ -1344,10 +1350,10 @@ class Mfem(Package, CudaPackage, ROCmPackage):
         test_exe = "ex10p" if ("+mpi" in self.spec) else "ex10"
 
         with working_dir(test_dir):
-            make = which("make")
+            make = which("make", required=True)
             make(f"CONFIG_MK={self.config_mk}", test_exe, "parallel=False")
 
-            ex10 = which(test_exe)
+            ex10 = which(test_exe, required=True)
             ex10("--mesh", mesh)
 
     # this patch is only needed for mfem 4.1, where a few
